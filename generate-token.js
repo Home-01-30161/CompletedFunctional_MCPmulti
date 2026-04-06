@@ -1,7 +1,11 @@
 import jwt from 'jsonwebtoken';
 
 // The OpenClaw Gateway Secret from dashboard (hex string)
+<<<<<<< HEAD
 const gatewaySecretHex = "ad83e129ad208660c11c92f945625572754e0e86635e3ecc";
+=======
+const gatewaySecretHex = " ";
+>>>>>>> c82351598965e9d500e53a0596429fbad2f1a0fe
 
 // Decode hex → raw binary Buffer (24 bytes as per OpenClaw docs)
 const secretBuf = Buffer.from(gatewaySecretHex, 'hex');
