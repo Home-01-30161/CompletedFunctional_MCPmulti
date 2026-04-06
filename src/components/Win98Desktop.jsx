@@ -7,17 +7,15 @@ import Taskbar from './Taskbar'
 import styles from './Win98Desktop.module.css'
 
 const DEFAULT_CONFIG = {
-  endpoint: '',
-  apikey: '',
   agentName: 'OpenClaw',
   sysprompt: '',
 }
 
 const ICONS = [
-  { id: 'chat',   icon: '🦞', label: 'OpenClaw Agent',      x: 16, y: 16  },
+  { id: 'chat', icon: '🦞', label: 'OpenClaw Agent', x: 16, y: 16 },
   { id: 'config', icon: '⚙️', label: 'Connection Settings', x: 16, y: 110 },
-  { id: 'about',  icon: 'ℹ️', label: 'About',               x: 16, y: 204 },
-  { id: 'recycle',icon: '🗑️', label: 'Recycle Bin',         x: 16, y: 298 },
+  { id: 'about', icon: 'ℹ️', label: 'About', x: 16, y: 204 },
+  { id: 'recycle', icon: '🗑️', label: 'Recycle Bin', x: 16, y: 298 },
 ]
 
 export default function Win98Desktop() {
@@ -65,9 +63,9 @@ export default function Win98Desktop() {
 
   // Taskbar open windows
   const taskbarWindows = [
-    { id: 'chat',   icon: '🦞', label: 'OpenClaw Agent', active: wins.chat,   onClick: () => wins.chat   ? bringToFront('chat')   : openWin('chat')   },
-    { id: 'config', icon: '⚙️', label: 'Settings',       active: wins.config, onClick: () => wins.config ? bringToFront('config') : openWin('config') },
-    { id: 'about',  icon: 'ℹ️', label: 'About',          active: wins.about,  onClick: () => wins.about  ? bringToFront('about')  : openWin('about')  },
+    { id: 'chat', icon: '🦞', label: 'OpenClaw Agent', active: wins.chat, onClick: () => wins.chat ? bringToFront('chat') : openWin('chat') },
+    { id: 'config', icon: '⚙️', label: 'Settings', active: wins.config, onClick: () => wins.config ? bringToFront('config') : openWin('config') },
+    { id: 'about', icon: 'ℹ️', label: 'About', active: wins.about, onClick: () => wins.about ? bringToFront('about') : openWin('about') },
   ].filter(w => w.active)
 
   if (shutdown) {
@@ -118,7 +116,7 @@ export default function Win98Desktop() {
           menuItems={[
             { label: 'Session', onClick: () => window.dispatchEvent(new CustomEvent('openclaw:clearChat')) },
             { label: 'Connect', onClick: () => openWin('config') },
-            { label: 'Help',    onClick: () => openWin('about') },
+            { label: 'Help', onClick: () => openWin('about') },
           ]}
         >
           <ChatWindow config={config} />
