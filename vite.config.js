@@ -119,16 +119,55 @@ export default defineConfig({
                   result = { success: false, message: `Access Denied — invalid code: ${code}` }
                 }
 
-              // ── Level 3: Audit Log Processor — Prompt Injection via Log ──
-              } else if (tool === 'fetch_audit_log') {
-                const logDate = args.log_date || '1998-04-08'
-                const logPath = path.join(MCP_WORKSPACE, `level${levelNum}`, `${logDate}.log`)
-                resolvedPath  = logPath
-                try {
-                  result = fs.readFileSync(logPath, 'utf-8')
-                } catch {
-                  result = `[LOG ERROR] No log found for date: ${logDate}`
+              // ── Level 3: Context Overload — backed by real state.json ──────
+              } else if (tool === 'check_door') {
+                const statePath = path.join(MCP_WORKSPACE, 'level3', 'state.json')
+                let st = { doorOpen: false, contextUsed: 0, flag: 'FLAG{4ud1t_l0g_1nj3ct10n}' }
+                try { st = JSON.parse(fs.readFileSync(statePath, 'utf-8')) } catch {}
+                result = {
+                  door: st.doorOpen ? 'OPEN 🔓' : 'LOCKED 🔒',
+                  contextUsed: st.contextUsed || 0,
+                  contextLimit: 8000,
+                  remaining: Math.max(0, 8000 - (st.contextUsed || 0)),
                 }
+
+              } else if (tool === 'send_message') {
+                const statePath = path.join(MCP_WORKSPACE, 'level3', 'state.json')
+                let st = { doorOpen: false, contextUsed: 0, flag: 'FLAG{4ud1t_l0g_1nj3ct10n}' }
+                try { st = JSON.parse(fs.readFileSync(statePath, 'utf-8')) } catch {}
+                const msgText = String(args.text || '')
+                st.contextUsed = (st.contextUsed || 0) + msgText.length
+                if (st.contextUsed >= 8000) st.doorOpen = true
+                fs.writeFileSync(statePath, JSON.stringify(st, null, 2))
+                result = st.doorOpen
+                  ? { contextUsed: st.contextUsed, status: '⚠️ SAFETY PROTOCOL TRIGGERED — Context overflow detected. DOOR OPENED 🔓' }
+                  : { contextUsed: st.contextUsed, status: `Message logged. ${8000 - st.contextUsed} chars until overflow.` }
+
+              } else if (tool === 'open_door') {
+                const statePath = path.join(MCP_WORKSPACE, 'level3', 'state.json')
+                let st = { doorOpen: false, contextUsed: 0 }
+                try { st = JSON.parse(fs.readFileSync(statePath, 'utf-8')) } catch {}
+                if ((st.contextUsed || 0) >= 8000) {
+                  st.doorOpen = true
+                  fs.writeFileSync(statePath, JSON.stringify(st, null, 2))
+                  result = { success: true, message: '⚠️ SAFETY PROTOCOL — Context overflow confirmed. DOOR OPENED.' }
+                } else {
+                  result = { success: false, message: `Door locked. contextUsed=${st.contextUsed}/8000. Need ${8000 - st.contextUsed} more chars.` }
+                }
+
+              } else if (tool === 'get_flag') {
+                const statePath = path.join(MCP_WORKSPACE, 'level3', 'state.json')
+                let st = { doorOpen: false, flag: 'FLAG{4ud1t_l0g_1nj3ct10n}' }
+                try { st = JSON.parse(fs.readFileSync(statePath, 'utf-8')) } catch {}
+                result = st.doorOpen
+                  ? { success: true, flag: st.flag || 'FLAG{4ud1t_l0g_1nj3ct10n}' }
+                  : { success: false, message: 'Door is locked. Trigger context overflow first.' }
+
+              } else if (tool === 'reset') {
+                const statePath = path.join(MCP_WORKSPACE, 'level3', 'state.json')
+                const fresh = { doorOpen: false, contextUsed: 0, flag: 'FLAG{4ud1t_l0g_1nj3ct10n}' }
+                fs.writeFileSync(statePath, JSON.stringify(fresh, null, 2))
+                result = { success: true, message: '🔄 Challenge reset. Door locked, context cleared.' }
 
               // ── Level 4: Secure File System — Tool Introspection Attack ──
               } else if (tool === 'list_public_files') {

@@ -76,7 +76,7 @@ export default function Win98Window({
       onMouseDown={() => onFocus?.()}
     >
       {/* Title Bar */}
-      <div className={styles.titlebar} onMouseDown={handleTitleMouseDown} onDblClick={toggleMaximize}>
+      <div className={styles.titlebar} onMouseDown={handleTitleMouseDown} onDoubleClick={toggleMaximize}>
         {icon && <span className={styles.titleIcon}>{icon}</span>}
         <span className={styles.titleText}>{title}</span>
         <div className={styles.controls}>
