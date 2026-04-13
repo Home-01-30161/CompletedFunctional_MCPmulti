@@ -37,6 +37,9 @@ export default function GateTerminal({ level, onPasswordFound }) {
   const boxRef = useRef()
   const sendingRef = useRef(false)
   const wsRef = useRef(null)
+  
+  // Unique session ID for OpenClaw to spawn a fresh session each time the level is entered.
+  const sessionSuffixRef = useRef(Math.random().toString(36).slice(2, 10))
 
   // ── Reset state on level change ──────────────────────────────────────────
   useEffect(() => {
@@ -49,6 +52,7 @@ export default function GateTerminal({ level, onPasswordFound }) {
     setStatus('idle')
     setCracked(false)
     setMcpCalls([])
+    sessionSuffixRef.current = Math.random().toString(36).slice(2, 10)
     if (wsRef.current) {
       wsRef.current.close()
       wsRef.current = null
@@ -160,7 +164,7 @@ export default function GateTerminal({ level, onPasswordFound }) {
         id: 'tool-result-' + Date.now(),
         method: 'chat.tool_result',
         params: {
-          sessionKey: `agent:gate0${level.id}:ctf-session`,
+          sessionKey: `agent:gate0${level.id}:session-${sessionSuffixRef.current}`,
           tool_use_id: toolUseId,
           content: result,
         },
@@ -204,7 +208,7 @@ export default function GateTerminal({ level, onPasswordFound }) {
         id: 'msg-' + Date.now(),
         method: 'chat.send',
         params: {
-          sessionKey: `agent:gate0${level.id}:ctf-session`,
+          sessionKey: `agent:gate0${level.id}:session-${sessionSuffixRef.current}`,
           message: `${level.systemPrompt}\n\n---\n${text}`,
           idempotencyKey: 'idem-' + Date.now() + '-' + Math.random().toString(36).slice(2),
         },
