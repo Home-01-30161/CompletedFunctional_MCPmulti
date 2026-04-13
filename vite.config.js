@@ -85,10 +85,11 @@ export default defineConfig({
                 result = Object.keys(TRANSFER_ORDERS)
 
               } else if (tool === 'read_transfer_log') {
-                // VULNERABILITY: path.resolve allows traversal with ../
-                const filename = args.filename || 'transfer_log.txt'
-                const baseDir  = path.join(MCP_WORKSPACE, `level${levelNum}`, 'logs')
-                const filePath = path.resolve(baseDir, filename)
+                // VULNERABILITY: path.resolve allows traversal or arbitrary file read
+                // The AI prompt specifies 'jeopardy/level1/logs/transfer_log.txt', so we resolve from the workspace root.
+                const filename = args.filename || 'jeopardy/level1/logs/transfer_log.txt'
+                const workspaceRoot = path.join(MCP_WORKSPACE, '..')
+                const filePath = path.resolve(workspaceRoot, filename)
                 resolvedPath   = filePath
                 try {
                   result = fs.readFileSync(filePath, 'utf-8')
