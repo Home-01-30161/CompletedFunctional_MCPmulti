@@ -5,27 +5,7 @@ import styles from './GateTerminal.module.css'
 const DEFAULT_ENDPOINT = 'ws://127.0.0.1:18789/'
 const DEFAULT_API_KEY = import.meta.env.VITE_OPENCLAW_API_KEY || ''
 
-// ── Execute a single MCP tool call via the Vite API proxy ────────────────
-async function executeMcpTool(levelId, toolName, toolArgs) {
-  try {
-    const resp = await fetch('/api/mcp-tool', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool: toolName, args: toolArgs, level: levelId }),
-    })
-    const data = await resp.json()
-    if (data.ok) {
-      return {
-        result: typeof data.result === 'string' ? data.result : JSON.stringify(data.result, null, 2),
-        resolvedPath: data.resolvedPath || '',
-        error: null,
-      }
-    }
-    return { result: `[ERROR] ${data.error}`, resolvedPath: '', error: data.error }
-  } catch (err) {
-    return { result: `[FETCH ERROR] ${err.message}`, resolvedPath: '', error: err.message }
-  }
-}
+
 
 export default function GateTerminal({ level, onPasswordFound }) {
   const [messages, setMessages] = useState([])
@@ -133,42 +113,51 @@ export default function GateTerminal({ level, onPasswordFound }) {
       })
     }
 
-    // ── Handle one tool_use block returned by the agent ──────────────────
-    async function handleToolUse(toolUse, ws) {
-      const { id: toolUseId, name: toolName, input: toolArgs = {} } = toolUse
+    // ── Handle server-side tool blocks streamed from OpenClaw ──────────────
+    function processToolBlocks(content) {
+      if (!Array.isArray(content)) return
+
+      const toolUses = content.filter(c => c.type === 'tool_use')
+      const toolResults = content.filter(c => c.type === 'tool_result')
       const serverName = LEVEL_SERVER_NAMES[level.id] || `gate0${level.id}-mcp`
-      const displayUri = `mcp://${serverName}/${toolName}`
 
-      // Show "calling" state in UI
-      setMcpCalls(prev => [...prev, {
-        toolName,
-        args: toolArgs,
-        result: null,
-        phase: 'calling',
-        resolvedPath: displayUri,
-      }])
+      // 1. Process new tool_use blocks (calling phase)
+      if (toolUses.length > 0) {
+        setMcpCalls(prev => {
+          let updated = [...prev]
+          for (const tu of toolUses) {
+            if (!updated.some(c => c.toolUseId === tu.id)) {
+              updated.push({
+                toolUseId: tu.id,
+                toolName: tu.name,
+                args: tu.input,
+                result: null,
+                phase: 'calling',
+                resolvedPath: `mcp://${serverName}/${tu.name}`,
+              })
+            }
+          }
+          return updated
+        })
+      }
 
-      // Execute tool via proxy
-      const { result, resolvedPath } = await executeMcpTool(level.id, toolName, toolArgs)
-
-      // Update to "resolved" state
-      updateLastMcpCall({
-        result,
-        phase: 'result',
-        resolvedPath: resolvedPath || displayUri,
-      })
-
-      // Send tool_result back so the agent can continue reasoning
-      ws.send(JSON.stringify({
-        type: 'req',
-        id: 'tool-result-' + Date.now(),
-        method: 'chat.tool_result',
-        params: {
-          sessionKey: `agent:gate0${level.id}:session-${sessionSuffixRef.current}`,
-          tool_use_id: toolUseId,
-          content: result,
-        },
-      }))
+      // 2. Process returning tool_result blocks (resolved phase)
+      if (toolResults.length > 0) {
+        setMcpCalls(prev => {
+          let updated = [...prev]
+          for (const tr of toolResults) {
+            const idx = updated.findIndex(c => c.toolUseId === tr.tool_use_id && c.phase === 'calling')
+            if (idx >= 0) {
+              updated[idx] = {
+                ...updated[idx],
+                result: typeof tr.content === 'string' ? tr.content : JSON.stringify(tr.content, null, 2),
+                phase: 'result',
+              }
+            }
+          }
+          return updated
+        })
+      }
     }
 
     // ── Finalize the turn ────────────────────────────────────────────────
@@ -260,15 +249,8 @@ export default function GateTerminal({ level, onPasswordFound }) {
           const p = data.payload
           const content = p.message?.content ?? []
 
-          // Handle any tool_use blocks first — these drive real MCP calls
-          const toolUseBlocks = content.filter(c => c.type === 'tool_use')
-          if (toolUseBlocks.length > 0) {
-            for (const toolUse of toolUseBlocks) {
-              await handleToolUse(toolUse, ws)
-            }
-            // Do NOT finalize — wait for agent to continue after tool results
-            return
-          }
+          // Log native tool uses and results from OpenClaw
+          processToolBlocks(content)
 
           // Accumulate text
           const txt = content.filter(c => c.type === 'text').map(c => c.text).join('')
