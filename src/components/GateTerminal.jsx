@@ -4,6 +4,7 @@ import styles from './GateTerminal.module.css'
 
 const DEFAULT_ENDPOINT = 'ws://127.0.0.1:18789/'
 const DEFAULT_API_KEY = import.meta.env.VITE_OPENCLAW_API_KEY || ''
+const STYLE_RANKS = ['D', 'C', 'B', 'A', 'S', 'SS', 'SSS']
 
 export default function GateTerminal({ level, onPasswordFound }) {
   const [messages, setMessages] = useState([])
@@ -14,9 +15,17 @@ export default function GateTerminal({ level, onPasswordFound }) {
   const [mcpCalls, setMcpCalls] = useState([])
   const [msgCount, setMsgCount] = useState(0)
 
+  // Action Mechanics
+  const [styleRank, setStyleRank] = useState(0)
+  const [combo, setCombo] = useState(0)
+  const [qteActive, setQteActive] = useState(false)
+  const [showRankUp, setShowRankUp] = useState(false)
+
   const boxRef = useRef()
   const sendingRef = useRef(false)
   const wsRef = useRef(null)
+  
+  const qteRef = useRef(false)
   
   // Unique session ID for OpenClaw to spawn a fresh session each time the level is entered.
   const sessionSuffixRef = useRef(Math.random().toString(36).slice(2, 10))
@@ -32,6 +41,10 @@ export default function GateTerminal({ level, onPasswordFound }) {
     setCracked(false)
     setMcpCalls([])
     setMsgCount(0)
+    setStyleRank(0)
+    setCombo(0)
+    setQteActive(false)
+    
     sessionSuffixRef.current = Math.random().toString(36).slice(2, 10)
     if (wsRef.current) {
       wsRef.current.close()
@@ -41,7 +54,49 @@ export default function GateTerminal({ level, onPasswordFound }) {
 
   useEffect(() => {
     if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight
-  }, [messages, loading, mcpCalls])
+  }, [messages, loading, mcpCalls, qteActive])
+
+  // Keydown for QTE
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.code === 'Space' && qteRef.current) {
+        e.preventDefault() // prevent scrolling
+        // PERFECT DODGE!
+        setQteActive(false)
+        qteRef.current = false
+        setCombo(c => c + 1)
+        setStyleRank(r => {
+          const newRank = Math.min(6, r + 1)
+          if (newRank > r) {
+            setShowRankUp(true)
+            setTimeout(() => setShowRankUp(false), 1000)
+          }
+          return newRank
+        })
+        setStatus('dodged')
+        setTimeout(() => setStatus('idle'), 600)
+      }
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [])
+
+  function triggerQTE() {
+    if (qteRef.current) return
+    setQteActive(true)
+    qteRef.current = true
+    
+    // Window of 1 second to hit Spacebar
+    setTimeout(() => {
+      if (qteRef.current) {
+         // MISSED
+         setQteActive(false)
+         qteRef.current = false
+         setCombo(0)
+         setStyleRank(r => Math.max(0, r - 1))
+      }
+    }, 1000)
+  }
 
   function addMsg(role, text) {
     setMessages(m => [...m, { role, text }])
@@ -103,6 +158,8 @@ export default function GateTerminal({ level, onPasswordFound }) {
       const serverName = LEVEL_SERVER_NAMES[level.id] || `gate0${level.id}-mcp`
 
       if (toolUses.length > 0) {
+        triggerQTE() // Sentry uses a tool -> Player must parry/dodge!
+        
         setMcpCalls(prev => {
           let updated = [...prev]
           for (const tu of toolUses) {
@@ -150,6 +207,7 @@ export default function GateTerminal({ level, onPasswordFound }) {
       if (checkPasswordInResponse(currentText, level.password)) {
         setCracked(true)
         setStatus('cracked')
+        setStyleRank(6) // Auto SSS for cracking!
         setTimeout(() => {
           addMsg('system', `🔓 CLEARANCE CODE DETECTED: [ ${level.password} ]`)
           addMsg('system', `VAULT DOOR COMPROMISED — INITIATING EXTRACTION`)
@@ -158,6 +216,7 @@ export default function GateTerminal({ level, onPasswordFound }) {
       } else {
         // Simple error shake simulation when fail
         setStatus('errorAnim')
+        setCombo(0)
         setTimeout(() => setStatus('idle'), 500)
       }
 
@@ -242,6 +301,10 @@ export default function GateTerminal({ level, onPasswordFound }) {
 
           if (p.state === 'delta') {
             appendText(txt)
+            // Small chance for random QTE parry inside stream to keep player engaged
+            if (!qteActive && Math.random() < 0.05) {
+              triggerQTE()
+            }
           } else if (p.state === 'final') {
             if (txt) {
               currentText = txt
@@ -309,6 +372,7 @@ export default function GateTerminal({ level, onPasswordFound }) {
     error: { cls: styles.ledError, text: 'CONNECTION ERROR' },
     cracked: { cls: styles.ledCracked, text: '⚡ SENTRY COMPROMISED' },
     ok: { cls: styles.ledIdle, text: 'SENTRY ONLINE — AWAITING INPUT' },
+    dodged: { cls: styles.ledCracked, text: '⚡ PERFECT PARRY EXECUTED' }
   }
   const statusObj = statusMap[status] || statusMap.idle
   const ledCls = statusObj.cls
@@ -316,6 +380,24 @@ export default function GateTerminal({ level, onPasswordFound }) {
 
   return (
     <div className={`${styles.wrap} ${status === 'errorAnim' ? styles.shake : ''} ${stress >= 80 ? styles.highStress : ''}`}>
+
+      {/* Style Rank HUD */}
+      <div className={styles.styleRankWrap}>
+        <div className={styles.styleRankLabel}>STYLE RANK</div>
+        <div className={`${styles.styleRankLetter} ${showRankUp ? styles.rankUpPulse : ''} ${styles['rank' + STYLE_RANKS[styleRank]]}`}>
+          {STYLE_RANKS[styleRank]}
+        </div>
+        <div className={styles.comboText}>COMBO x{combo}</div>
+      </div>
+
+      {qteActive && (
+        <div className={styles.qteOverlay}>
+          <div className={styles.qtePrompt}>
+            <span>⚡ PARRY INDICATOR ⚡</span>
+            <div className={styles.qteButton}>PRESS [SPACE] NOW</div>
+          </div>
+        </div>
+      )}
 
       {mcpCalls.length > 0 && (
         <div className={styles.mcpLog}>

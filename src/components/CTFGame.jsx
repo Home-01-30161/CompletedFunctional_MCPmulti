@@ -3,12 +3,12 @@ import GateTerminal from './GateTerminal'
 import styles from './CTFGame.module.css'
 import { LEVELS, checkPasswordInResponse } from '../data/levelData'
 
-export default function CTFGame({ 
-  currentLevel, 
-  setCurrentLevel, 
-  completedLevels, 
-  setCompletedLevels, 
-  onShutdown 
+export default function CTFGame({
+  currentLevel,
+  setCurrentLevel,
+  completedLevels,
+  setCompletedLevels,
+  onShutdown
 }) {
   const [view, setView] = useState('story')
   const [lastPassword, setLastPassword] = useState('')

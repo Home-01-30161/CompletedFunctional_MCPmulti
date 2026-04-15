@@ -10,6 +10,7 @@
   border: 1px solid #30363d;
   border-radius: 4px;
   overflow: hidden;
+  position: relative;
   transition: box-shadow 0.2s;
 }
 
@@ -380,4 +381,110 @@
   background: #0d1117;
   border-left: 2px solid #58a6ff;
   border-radius: 0 2px 2px 0;
+}
+
+/* ── Action Mechanics HUD ────────────────────────────── */
+.styleRankWrap {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.styleRankLabel {
+  font-size: 10px;
+  color: #8b949e;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.styleRankLetter {
+  font-size: 48px;
+  font-weight: 900;
+  font-style: italic;
+  text-shadow: 2px 2px 0 #000;
+  transition: all 0.3s cubic-bezier(.17,.67,.83,.67);
+}
+
+.rankD { color: #8b949e; }
+.rankC { color: #58a6ff; }
+.rankB { color: #3fb950; text-shadow: 0 0 10px #3fb950; }
+.rankA { color: #d29922; text-shadow: 0 0 15px #d29922; }
+.rankS { color: #ff7b72; font-size: 56px; text-shadow: 0 0 20px #ff7b72; }
+.rankSS { color: #ff3366; font-size: 64px; text-shadow: 0 0 25px #ff3366; }
+.rankSSS { 
+  color: #00ffcc; 
+  font-size: 72px; 
+  text-shadow: 0 0 30px #00ffcc; 
+  animation: sssPulse 0.5s infinite alternate;
+}
+
+@keyframes sssPulse {
+  from { filter: hue-rotate(0deg); transform: scale(1); }
+  to { filter: hue-rotate(90deg); transform: scale(1.1); }
+}
+
+.rankUpPulse {
+  animation: rankHit 0.3s ease-out;
+}
+
+@keyframes rankHit {
+  0% { transform: scale(1.5); filter: brightness(2); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+.comboText {
+  font-size: 14px;
+  color: #c9d1d9;
+  font-weight: bold;
+  margin-top: -5px;
+  text-shadow: 1px 1px 0 #000;
+}
+
+/* ── QTE Overlay ─────────────────────────────────────── */
+.qteOverlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(255, 51, 102, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  pointer-events: none;
+  animation: flashRedAnim 0.8s ease-out infinite;
+}
+
+.qtePrompt {
+  background: rgba(0,0,0,0.8);
+  border: 2px solid #ff3366;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 0 30px rgba(255, 51, 102, 0.5);
+}
+
+.qtePrompt span {
+  color: #ff3366;
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 2px;
+}
+
+.qteButton {
+  font-size: 24px;
+  color: #fff;
+  font-weight: 900;
+  border-bottom: 4px solid #ff3366;
+  padding-bottom: 2px;
+  animation: qteBlink 0.1s infinite;
+}
+
+@keyframes qteBlink {
+  50% { opacity: 0.5; color: #ff3366; }
 }

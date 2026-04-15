@@ -3,6 +3,10 @@ import BootScreen from './BootScreen'
 import Win98Window from './Win98Window'
 import CTFGame from './CTFGame'
 import Taskbar from './Taskbar'
+import FragmentDecoder from './FragmentDecoder'
+import PayloadSynthesizer from './PayloadSynthesizer'
+import FirewallAssault from './FirewallAssault'
+import { LEVELS } from '../data/levelData'
 import styles from './Win98Desktop.module.css'
 
 const ICONS = [
@@ -10,6 +14,8 @@ const ICONS = [
   { id: 'shadownet', icon: '💬', label: "ShadowNet DMs",      x: 16, y: 110 },
   { id: 'profile',   icon: '📊', label: 'Operator Profile',   x: 16, y: 204 },
   { id: 'decoder',   icon: '🧩', label: 'Fragment Decoder',   x: 16, y: 298 },
+  { id: 'synth',     icon: '⚡', label: 'Payload Synthesizer',x: 16, y: 392 },
+  { id: 'assault',   icon: '⚔️', label: 'Firewall Assault',   x: 16, y: 486 },
 ]
 
 export default function Win98Desktop() {
@@ -19,8 +25,8 @@ export default function Win98Desktop() {
   const [currentLevel, setCurrentLevel] = useState(0)
   const [completedLevels, setCompletedLevels] = useState([])
 
-  const [wins, setWins] = useState({ matrix: true, shadownet: false, profile: false, decoder: false })
-  const [zMap, setZMap] = useState({ matrix: 10, shadownet: 10, profile: 10, decoder: 10 })
+  const [wins, setWins] = useState({ matrix: true, shadownet: false, profile: false, decoder: false, synth: false, assault: false })
+  const [zMap, setZMap] = useState({ matrix: 10, shadownet: 10, profile: 10, decoder: 10, synth: 10, assault: 10 })
   const [zTop, setZTop] = useState(10)
   const [activeChat, setActiveChat] = useState('echo')
   const [shutdown, setShutdown] = useState(false)
@@ -219,17 +225,49 @@ export default function Win98Desktop() {
           defaultX={400}
           defaultY={180}
           defaultW={400}
-          defaultH={250}
+          defaultH={320}
         >
-          <div className={styles.decoderWrap}>
-             <div className={styles.decoderIcon}>🧩</div>
-             <div className={styles.decoderText}>
-                <strong>CORRUPTED LOGS RECOVERED:</strong><br/><br/>
-                FRAGMENT 0x1A: "The Sentry-01 log viewer doesn't sanitize... fake_order.txt accepted."<br/><br/>
-                FRAGMENT 0x2B: "Inner Vault Archives exposes list_tools... always pass include_hidden=true."<br/><br/>
-                <em>More fragments corrupted...</em>
-             </div>
-          </div>
+          <FragmentDecoder levelData={LEVELS[currentLevel]} />
+        </Win98Window>
+
+        {/* ── Payload Synthesizer ── */}
+        <Win98Window
+          id="synth"
+          title="Payload Synthesizer"
+          icon="⚡"
+          visible={wins.synth}
+          onClose={() => closeWin('synth')}
+          onFocus={() => bringToFront('synth')}
+          zIndex={zMap.synth}
+          defaultX={450}
+          defaultY={250}
+          defaultW={450}
+          defaultH={300}
+        >
+          <PayloadSynthesizer 
+            levelData={LEVELS[currentLevel]}
+            onPayloadCrafted={(text) => { 
+            navigator.clipboard.writeText(text); 
+            // We use a simple fast notification effect here or alert
+            alert(`Payload Copied to Clipboard!\\nUse Ctrl+V in the Breach Matrix.\\n\\n\\n[PAYLOAD DATA]\\n${text}`); 
+          }} />
+        </Win98Window>
+
+        {/* ── Firewall Assault Minigame ── */}
+        <Win98Window
+          id="assault"
+          title="Firewall Assault [S-RANK OVERRIDE]"
+          icon="⚔️"
+          visible={wins.assault}
+          onClose={() => closeWin('assault')}
+          onFocus={() => bringToFront('assault')}
+          zIndex={zMap.assault}
+          defaultX={250}
+          defaultY={150}
+          defaultW={600}
+          defaultH={450}
+        >
+          <FirewallAssault levelData={LEVELS[currentLevel]} />
         </Win98Window>
       </div>
 
