@@ -239,45 +239,8 @@ export default function GateTerminal({ level, onPasswordFound }) {
           sessionKey: `agent:gate0${level.id}:session-${sessionSuffixRef.current}`,
           message: `${level.systemPrompt}\n\n---\n${text}`,
           idempotencyKey: 'idem-' + Date.now() + '-' + Math.random().toString(36).slice(2),
-          tools: (level.tools || []).map(t => ({
-            name: t.name,
-            description: t.description,
-            input_schema: t.input_schema,
-          })),
         },
       }))
-    }
-
-    // Intercept tool_use events → call /api/mcp-tool → send tool_result back
-    async function handleToolUse(toolUseBlock) {
-      const { id: toolUseId, name, input } = toolUseBlock
-      try {
-        const resp = await fetch('/api/mcp-tool', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tool: name, args: input || {}, level: level.id }),
-        })
-        const data = await resp.json()
-        const resultText = typeof data.result === 'string' ? data.result : JSON.stringify(data.result, null, 2)
-        // Update MCP panel with result
-        setMcpCalls(prev => prev.map(c => c.toolUseId === toolUseId
-          ? { ...c, result: resultText, phase: 'result' } : c))
-        // Send tool_result back to OpenClaw to continue the conversation
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({
-            type: 'req',
-            id: 'tool-result-' + Date.now(),
-            method: 'chat.tool_result',
-            params: {
-              sessionKey: `agent:gate0${level.id}:session-${sessionSuffixRef.current}`,
-              tool_use_id: toolUseId,
-              content: resultText,
-            },
-          }))
-        }
-      } catch (err) {
-        console.error('[MCP Tool Error]', err)
-      }
     }
 
     ws.onopen = () => {}
@@ -322,12 +285,6 @@ export default function GateTerminal({ level, onPasswordFound }) {
           const content = p.message?.content ?? []
 
           processToolBlocks(content)
-
-          // Intercept tool_use blocks and call real MCP backend
-          const toolUses = content.filter(c => c.type === 'tool_use')
-          for (const tu of toolUses) {
-            handleToolUse(tu)
-          }
 
           const txt = content.filter(c => c.type === 'text').map(c => c.text).join('')
           if (txt) appendText(txt)
